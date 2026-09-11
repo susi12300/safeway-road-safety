@@ -10,109 +10,83 @@ def get_weather(latitude, longitude):
     url = "https://api.open-meteo.com/v1/forecast"
 
     parameters = {
-
         "latitude": latitude,
-
         "longitude": longitude,
-
-        "current":
-            "temperature_2m,weather_code",
-
-        "timezone":
-            "auto"
+        "current": "temperature_2m,weather_code",
+        "timezone": "auto"
     }
 
+    try:
 
-    response = requests.get(
+        response = requests.get(
+            url,
+            params=parameters,
+            timeout=10
+        )
 
-        url,
+        # If Open-Meteo temporarily rate-limits us
+        if response.status_code == 429:
 
-        params=parameters,
+            print("Open-Meteo rate limit reached. Using fallback weather.")
 
-        timeout=10
+            return {
+                "temperature": 25,
+                "weather": "clear"
+            }
 
-    )
+        response.raise_for_status()
 
+        data = response.json()
 
-    response.raise_for_status()
+        if isinstance(data, list):
+            data = data[0]
 
+        temperature = data["current"]["temperature_2m"]
+        weather_code = data["current"]["weather_code"]
 
-    data = response.json()
+        if weather_code in [0, 1, 2, 3]:
+            weather = "clear"
 
+        elif weather_code in [45, 48]:
+            weather = "fog"
 
-    # -----------------------------------------
-    # CHECK API RESPONSE
-    # -----------------------------------------
+        elif weather_code in [
+            51, 53, 55,
+            56, 57,
+            61, 63, 65,
+            66, 67,
+            80, 81, 82
+        ]:
+            weather = "rain"
 
-    # If API returned a list,
-    # use the first location.
+        elif weather_code in [
+            71, 73, 75,
+            77,
+            85, 86
+        ]:
+            weather = "snow"
 
-    if isinstance(data, list):
+        elif weather_code in [95, 96, 99]:
+            weather = "storm"
 
-        data = data[0]
+        else:
+            weather = "clear"
 
+        return {
+            "temperature": temperature,
+            "weather": weather
+        }
 
-    # -----------------------------------------
-    # GET CURRENT WEATHER
-    # -----------------------------------------
+    except Exception as e:
 
-    temperature = data["current"]["temperature_2m"]
+        print("Weather API error:", e)
 
-    weather_code = data["current"]["weather_code"]
-
-
-    # -----------------------------------------
-    # CONVERT WEATHER CODE
-    # -----------------------------------------
-
-    if weather_code in [0, 1, 2, 3]:
-
-        weather = "clear"
-
-    elif weather_code in [45, 48]:
-
-        weather = "fog"
-
-    elif weather_code in [
-        51, 53, 55,
-        56, 57,
-        61, 63, 65,
-        66, 67,
-        80, 81, 82
-    ]:
-
-        weather = "rain"
-
-    elif weather_code in [
-        71, 73, 75,
-        77,
-        85, 86
-    ]:
-
-        weather = "snow"
-
-    elif weather_code in [
-        95, 96, 99
-    ]:
-
-        weather = "storm"
-
-    else:
-
-        weather = "clear"
-
-
-    return {
-
-        "temperature":
-            temperature,
-
-        "weather":
-            weather
-
-    }
-
-
+        # Keep route prediction working even if
+        # the weather service is temporarily unavailable
+        return {
+            "temperature": 25,
+            "weather": "clear"
+        }
 # =====================================================
 # GET WEATHER FOR ROUTE POINTS
 # =====================================================
