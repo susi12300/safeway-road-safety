@@ -514,7 +514,7 @@ def predict():
     except Exception as e:
         print("Prediction error:", repr(e))
         return jsonify({
-            "error": "Failed to predict route safety"
+            "error": "Failed to predict route safety",
             "details": str(e)
         }), 500
 
