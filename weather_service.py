@@ -90,19 +90,20 @@ def get_weather(latitude, longitude):
 # =====================================================
 # GET WEATHER FOR ROUTE POINTS
 # =====================================================
+# =====================================================
+# GET WEATHER FOR ROUTE POINTS
+# =====================================================
 
 def get_route_weather(route_points):
 
-    weather_results = []
+    if not route_points:
+        return []
+
+    number_of_points = len(route_points)
 
     # -------------------------------------------------
     # SAMPLE ONLY 5 POINTS FROM THE ROUTE
     # -------------------------------------------------
-
-    if not route_points:
-        return weather_results
-
-    number_of_points = len(route_points)
 
     sample_indexes = [
         0,
@@ -112,52 +113,154 @@ def get_route_weather(route_points):
         number_of_points - 1
     ]
 
-    # Remove duplicates
+    # Remove duplicate indexes
     sample_indexes = list(dict.fromkeys(sample_indexes))
 
+    selected_points = [
+        route_points[index]
+        for index in sample_indexes
+    ]
+
+    # ORS coordinates:
+    # [longitude, latitude]
+
+    longitudes = [
+        point[0]
+        for point in selected_points
+    ]
+
+    latitudes = [
+        point[1]
+        for point in selected_points
+    ]
+
+    print("Checking weather for", len(selected_points), "route points")
+
     # -------------------------------------------------
-    # GET WEATHER FOR SELECTED POINTS
+    # ONE OPEN-METEO REQUEST FOR ALL POINTS
     # -------------------------------------------------
 
-    for index in sample_indexes:
+    url = "https://api.open-meteo.com/v1/forecast"
 
-        point = route_points[index]
+    parameters = {
+        "latitude": ",".join(map(str, latitudes)),
+        "longitude": ",".join(map(str, longitudes)),
+        "current": "temperature_2m,weather_code",
+        "timezone": "auto"
+    }
 
-        # ORS coordinates:
-        # [longitude, latitude]
+    try:
 
-        longitude = point[0]
-        latitude = point[1]
-
-        print(
-            "Checking weather:",
-            latitude,
-            longitude
+        response = requests.get(
+            url,
+            params=parameters,
+            timeout=10
         )
 
-        weather_data = get_weather(
-            latitude,
-            longitude
-        )
+        # Rate limit fallback
+        if response.status_code == 429:
 
-        weather_results.append({
+            print(
+                "Open-Meteo rate limit reached. "
+                "Using fallback weather."
+            )
 
-            "latitude":
-                latitude,
+            return [
+                {
+                    "latitude": latitudes[i],
+                    "longitude": longitudes[i],
+                    "temperature": 25,
+                    "weather": "clear"
+                }
+                for i in range(len(selected_points))
+            ]
 
-            "longitude":
-                longitude,
+        response.raise_for_status()
 
-            "temperature":
-                weather_data["temperature"],
+        data = response.json()
 
-            "weather":
-                weather_data["weather"]
+        # Open-Meteo returns a list when
+        # multiple locations are requested.
+        if not isinstance(data, list):
+            data = [data]
 
-        })
+        weather_results = []
 
-    return weather_results
-# =====================================================
+        for i, weather_data in enumerate(data):
+
+            temperature = weather_data["current"]["temperature_2m"]
+
+            weather_code = weather_data["current"]["weather_code"]
+
+            # -------------------------------------------------
+            # CONVERT WEATHER CODE
+            # -------------------------------------------------
+
+            if weather_code in [0, 1, 2, 3]:
+
+                weather = "clear"
+
+            elif weather_code in [45, 48]:
+
+                weather = "fog"
+
+            elif weather_code in [
+                51, 53, 55,
+                56, 57,
+                61, 63, 65,
+                66, 67,
+                80, 81, 82
+            ]:
+
+                weather = "rain"
+
+            elif weather_code in [
+                71, 73, 75,
+                77,
+                85, 86
+            ]:
+
+                weather = "snow"
+
+            elif weather_code in [95, 96, 99]:
+
+                weather = "storm"
+
+            else:
+
+                weather = "clear"
+
+            weather_results.append({
+
+                "latitude": latitudes[i],
+
+                "longitude": longitudes[i],
+
+                "temperature": temperature,
+
+                "weather": weather
+
+            })
+
+        return weather_results
+
+    except Exception as e:
+
+        print("Weather API error:", e)
+
+        # Keep prediction working even if
+        # weather service fails.
+
+        return [
+            {
+                "latitude": latitudes[i],
+                "longitude": longitudes[i],
+                "temperature": 25,
+                "weather": "clear"
+            }
+            for i in range(len(selected_points))
+        ]
+# ===================
 # GET OVERALL ROUTE WEATHER
 # =====================================================
 
