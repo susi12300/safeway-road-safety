@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>AI Smart Route Safety</title>
+
+    <meta name="theme-color" content="#0d1117">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"
+    >
+
+    <link rel="stylesheet" href="style.css">
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>🚦 AI Smart Route Safety</h1>
+
+        <p class="subtitle">
+            Find your route and check its safety risk
+        </p>
+
+        <div class="form-box">
+
+            <label>📍 Source</label>
+
+<div class="location-input">
+    <input
+        type="text"
+        id="source"
+        placeholder="Enter source location"
+        value="Vellore"
+        autocomplete="off"
+    >
+
+    <div id="sourceSuggestions" class="suggestions"></div>
+</div>
+
+
+<label>🏁 Destination</label>
+
+<div class="location-input">
+    <input
+        type="text"
+        id="destination"
+        placeholder="Enter destination location"
+        value="Chennai"
+        autocomplete="off"
+    >
+
+    <div id="destinationSuggestions" class="suggestions"></div>
+</div>
+
+            <label>⏰ Departure Time</label>
+
+            <input
+                type="time"
+                id="departureTime"
+                value="08:00"
+            >
+
+            <button onclick="findRoute()">
+                🛣️ Find Safe Route
+            </button>
+
+            <button
+                id="navigationButton"
+                onclick="startNavigation()"
+            >
+                📍 Start Safety Navigation
+            </button>
+            
+
+        </div>
+
+        <div id="result">
+
+            Your route safety result will appear here.
+
+        </div>
+
+        <div id="map"></div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>

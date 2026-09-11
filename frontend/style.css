@@ -1,0 +1,444 @@
+/* =====================================================
+   TOKENS — "night highway dashboard"
+   Dark instrument-panel shell around a bright, readable
+   map + form, like a nav app's dark mode.
+===================================================== */
+
+:root {
+    --bg: #0b0f14;
+    --bg-grid: #0f141b;
+    --surface: #141b23;
+    --surface-2: #1b2530;
+    --border: #26313d;
+    --border-soft: #1e2831;
+
+    --text: #e8edf2;
+    --text-muted: #8b98a5;
+    --text-faint: #5a6570;
+
+    --accent: #f5a623;      /* route amber */
+    --accent-strong: #ffb733;
+    --accent-ink: #201404;
+
+    --safe: #35d399;        /* safety green */
+    --safe-strong: #1fb884;
+
+    --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+    --font-body: "Inter", "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+    --radius: 14px;
+    --radius-sm: 9px;
+}
+
+
+/* =====================================================
+   BASIC PAGE
+===================================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    margin: 0;
+    color: var(--text);
+    background:
+        radial-gradient(circle at 15% 0%, rgba(245, 166, 35, 0.07), transparent 45%),
+        radial-gradient(circle at 85% 15%, rgba(53, 211, 153, 0.06), transparent 40%),
+        var(--bg);
+    min-height: 100vh;
+}
+
+/* thin route-progress bar signature, fixed to the top of the viewport */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 100;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--accent) 0 22px,
+        transparent 22px 34px
+    );
+    opacity: 0.9;
+}
+
+
+/* =====================================================
+   MAIN CONTAINER
+===================================================== */
+
+.container {
+    width: 90%;
+    max-width: 700px;
+    margin: 30px auto 60px;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-align: center;
+    margin: 10px 0 6px;
+    font-size: 2rem;
+    color: var(--text);
+}
+
+.subtitle {
+    text-align: center;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+}
+
+
+/* =====================================================
+   FORM
+===================================================== */
+
+.form-box {
+    background: var(--surface);
+    padding: 26px;
+    border-radius: var(--radius);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.03) inset,
+        0 20px 40px -20px rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--border);
+}
+
+
+label {
+    display: block;
+    margin-top: 16px;
+    margin-bottom: 7px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.01em;
+    color: var(--text-muted);
+}
+
+label:first-of-type {
+    margin-top: 0;
+}
+
+
+input {
+    width: 100%;
+    padding: 12px 14px;
+
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    outline: none;
+
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input::placeholder {
+    color: var(--text-faint);
+}
+
+input[type="time"] {
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+}
+
+/* Leaflet/webkit calendar icon on time input */
+input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
+input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.18);
+}
+
+input:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.18);
+}
+
+
+/* =====================================================
+   BUTTONS
+===================================================== */
+
+button {
+    width: 100%;
+    padding: 14px;
+
+    margin-top: 22px;
+
+    border: none;
+    border-radius: var(--radius-sm);
+
+    background: var(--accent);
+    color: var(--accent-ink);
+
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+
+button:hover {
+    background: var(--accent-strong);
+}
+
+button:active {
+    transform: translateY(1px);
+}
+
+button:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+
+#navigationButton {
+    background: var(--safe);
+    color: #06231a;
+}
+
+
+#navigationButton:hover {
+    background: var(--safe-strong);
+}
+
+
+/* =====================================================
+   RESULT CARD
+===================================================== */
+
+#result {
+    background: var(--surface);
+
+    margin-top: 24px;
+    padding: 24px;
+
+    border-radius: var(--radius);
+
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.03) inset,
+        0 20px 40px -20px rgba(0, 0, 0, 0.6);
+
+    border: 1px solid var(--border);
+
+    line-height: 1.65;
+    color: var(--text-muted);
+}
+
+
+#result h2 {
+    font-family: var(--font-display);
+    margin-top: 0;
+    color: var(--text);
+}
+
+
+#result h3 {
+    font-family: var(--font-display);
+    color: var(--text);
+    margin-top: 20px;
+    font-size: 1.02rem;
+}
+
+
+#result p {
+    margin: 8px 0;
+}
+
+
+/* road-line divider — the signature motif, echoed from the top bar */
+#result hr {
+    border: none;
+    height: 2px;
+    margin: 20px 0;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--border) 0 10px,
+        transparent 10px 18px
+    );
+}
+
+
+#result ul {
+    padding-left: 22px;
+}
+
+
+/* =====================================================
+   MAP
+===================================================== */
+
+#map {
+    width: 100%;
+    height: 400px;
+
+    margin-top: 24px;
+
+    border-radius: var(--radius);
+
+    box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+
+    border: 1px solid var(--border);
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 600px) {
+
+    .container {
+        width: 94%;
+        margin: 20px auto 40px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+
+    .form-box {
+        padding: 18px;
+    }
+
+    #result {
+        padding: 18px;
+    }
+
+    #map {
+        height: 350px;
+    }
+
+}
+
+
+/* =====================================================
+   LOCATION SUGGESTIONS
+===================================================== */
+
+.location-input {
+    position: relative;
+}
+
+
+.suggestions {
+
+    position: absolute;
+
+    left: 0;
+    right: 0;
+
+    top: calc(100% + 4px);
+
+    background: var(--surface-2);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-sm);
+
+    box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.7);
+
+    z-index: 9999;
+
+    max-height: 220px;
+
+    overflow-y: auto;
+
+    display: none;
+}
+
+
+/* Scrollbar */
+
+.suggestions::-webkit-scrollbar {
+    width: 7px;
+}
+
+
+.suggestions::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+
+.suggestions::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+/* Individual suggestion */
+
+.suggestion-item {
+
+    padding: 11px 13px;
+
+    cursor: pointer;
+
+    border-bottom: 1px solid var(--border-soft);
+
+    font-size: 14px;
+
+    color: var(--text);
+
+    transition: background 0.15s ease;
+}
+
+
+.suggestion-item:hover {
+
+    background: rgba(245, 166, 35, 0.1);
+
+}
+
+
+.suggestion-item:last-child {
+
+    border-bottom: none;
+
+}
+
+
+/* Main place name */
+
+.suggestion-name {
+
+    font-weight: 600;
+
+    color: var(--text);
+
+    margin-bottom: 3px;
+
+}
+
+
+/* State / location */
+
+.suggestion-location {
+
+    font-size: 12px;
+
+    color: var(--text-muted);
+
+}
