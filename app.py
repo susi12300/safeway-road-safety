@@ -237,6 +237,9 @@ def predict():
 
         weather = weather_result["overall_weather"]
         temperature = weather_result["average_temperature"]
+        weather_source = weather_result["weather_source"]
+
+
         print("DEBUG 3: Weather value obtained")
         print("Weather source:", weather_source)
 
