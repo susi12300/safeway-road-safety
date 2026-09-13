@@ -27,31 +27,24 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 def weather_code_to_text(weather_id):
 
-    # Thunderstorm
     if 200 <= weather_id <= 232:
         return "storm"
 
-    # Drizzle
     elif 300 <= weather_id <= 321:
         return "rain"
 
-    # Rain
     elif 500 <= weather_id <= 531:
         return "rain"
 
-    # Snow
     elif 600 <= weather_id <= 622:
         return "snow"
 
-    # Atmosphere
     elif 701 <= weather_id <= 781:
         return "fog"
 
-    # Clear
     elif weather_id == 800:
         return "clear"
 
-    # Clouds
     elif 801 <= weather_id <= 804:
         return "clear"
 
@@ -143,15 +136,12 @@ def get_route_weather(route_points):
     if not route_points:
         return []
 
+
     number_of_points = len(route_points)
 
 
     # -------------------------------------------------
-    # ONLY 3 POINTS
-    #
-    # SOURCE
-    # MIDPOINT
-    # DESTINATION
+    # SOURCE + MIDPOINT + DESTINATION
     # -------------------------------------------------
 
     sample_indexes = [
@@ -165,7 +155,7 @@ def get_route_weather(route_points):
     ]
 
 
-    # Remove duplicates for very short routes
+    # Remove duplicates for short routes
 
     sample_indexes = list(
         dict.fromkeys(sample_indexes)
@@ -209,7 +199,7 @@ def get_route_weather(route_points):
 
 
     # -------------------------------------------------
-    # GET WEATHER FOR 3 POINTS
+    # GET LIVE WEATHER
     # -------------------------------------------------
 
     weather_results = []
@@ -248,39 +238,60 @@ def get_route_weather(route_points):
                     weather_data["temperature"],
 
                 "weather":
-                    weather_data["weather"]
+                    weather_data["weather"],
+
+                "weather_source":
+                    "live"
 
             })
-
-
-        except requests.exceptions.RequestException as e:
-
-            print(
-                "OpenWeather request error:",
-                repr(e)
-            )
-
-            raise RuntimeError(
-                "Live weather service is temporarily unavailable. "
-                "Please try again later."
-            )
 
 
         except Exception as e:
 
             print(
-                "Weather processing error:",
+                "OpenWeather unavailable:",
                 repr(e)
             )
 
-            raise RuntimeError(
-                "Live weather service is temporarily unavailable. "
-                "Please try again later."
+            print(
+                "Using default weather conditions."
             )
 
 
+            # -------------------------------------------------
+            # DEFAULT WEATHER FALLBACK
+            # -------------------------------------------------
+
+            weather_results = []
+
+
+            for fallback_point in selected_points:
+
+                weather_results.append({
+
+                    "latitude":
+                        fallback_point[1],
+
+                    "longitude":
+                        fallback_point[0],
+
+                    "temperature":
+                        30.0,
+
+                    "weather":
+                        "clear",
+
+                    "weather_source":
+                        "default"
+
+                })
+
+
+            break
+
+
     # -------------------------------------------------
-    # SAVE SUCCESSFUL RESULT
+    # SAVE RESULT TO CACHE
     # -------------------------------------------------
 
     _weather_cache[cache_key] = {
@@ -294,9 +305,27 @@ def get_route_weather(route_points):
     }
 
 
-    print(
-        "Weather data received successfully."
-    )
+    # -------------------------------------------------
+    # PRINT SOURCE
+    # -------------------------------------------------
+
+    if weather_results:
+
+        source = weather_results[0][
+            "weather_source"
+        ]
+
+        if source == "live":
+
+            print(
+                "Weather source: LIVE"
+            )
+
+        else:
+
+            print(
+                "Weather source: DEFAULT"
+            )
 
 
     return weather_results
@@ -357,8 +386,6 @@ def get_overall_route_weather(route_points):
     ]
 
 
-    # Dangerous weather gets priority
-
     if "storm" in weather_list:
 
         overall_weather = "storm"
@@ -380,12 +407,24 @@ def get_overall_route_weather(route_points):
         overall_weather = "clear"
 
 
+    # -------------------------------------------------
+    # WEATHER SOURCE
+    # -------------------------------------------------
+
+    weather_source = weather_results[0][
+        "weather_source"
+    ]
+
+
     return {
 
         "overall_weather":
             overall_weather,
 
         "average_temperature":
-            average_temperature
+            average_temperature,
+
+        "weather_source":
+            weather_source
 
     }

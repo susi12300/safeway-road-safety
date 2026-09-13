@@ -238,6 +238,7 @@ def predict():
         weather = weather_result["overall_weather"]
         temperature = weather_result["average_temperature"]
         print("DEBUG 3: Weather value obtained")
+        print("Weather source:", weather_source)
 
         # =================================================
         # ESTIMATE TRAFFIC
@@ -297,7 +298,9 @@ def predict():
             "is_peak_hour": is_peak_hour,
             "visibility": visibility,
             "temperature": temperature,
+            "weather_source": weather_source,
             "lanes": lanes
+            
         }])
 
         # =================================================
