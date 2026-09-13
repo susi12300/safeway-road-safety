@@ -512,7 +512,9 @@ def predict():
         })
 
     except Exception as e:
+        import traceback
         print("Prediction error:", repr(e))
+        traceback.print_exc()
         return jsonify({
             "error": "Failed to predict route safety",
             "details": str(e)
