@@ -1,3 +1,5 @@
+from urllib import response
+
 import requests
 
 
@@ -23,6 +25,8 @@ def get_weather(latitude, longitude):
             params=parameters,
             timeout=10
         )
+        print("WEATHER STATUS:", response.status_code)
+        print("WEATHER RESPONSE:", response.text)
 
         # If Open-Meteo temporarily rate-limits us
         if response.status_code == 429:
@@ -260,7 +264,7 @@ def get_route_weather(route_points):
             }
             for i in range(len(selected_points))
         ]
-# ===================
+# ===================r
 # GET OVERALL ROUTE WEATHER
 # =====================================================
 
