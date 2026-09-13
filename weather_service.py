@@ -1,31 +1,77 @@
 import requests
-import time
-from datetime import datetime, timezone
 
 
-# ============================================================
-# WEATHER CACHE
-# ============================================================
+# =====================================================
+# GET WEATHER FOR ONE LOCATION
+# =====================================================
 
-# Weather data is cached for 5 minutes.
-# This reduces repeated Open-Meteo requests when multiple
-# users request the same/similar route.
-CACHE_DURATION = 300
+def get_weather(latitude, longitude):
 
-_weather_cache = {}
+    url = "https://api.open-meteo.com/v1/forecast"
+
+    parameters = {
+
+        "latitude": latitude,
+
+        "longitude": longitude,
+
+        "current":
+            "temperature_2m,weather_code",
+
+        "timezone":
+            "auto"
+    }
 
 
-# ============================================================
-# WEATHER CODE CONVERSION
-# ============================================================
+    response = requests.get(
 
-def weather_code_to_text(weather_code):
+        url,
+
+        params=parameters,
+
+        timeout=10
+
+    )
+
+
+    response.raise_for_status()
+
+
+    data = response.json()
+
+
+    # -----------------------------------------
+    # CHECK API RESPONSE
+    # -----------------------------------------
+
+    # If API returned a list,
+    # use the first location.
+
+    if isinstance(data, list):
+
+        data = data[0]
+
+
+    # -----------------------------------------
+    # GET CURRENT WEATHER
+    # -----------------------------------------
+
+    temperature = data["current"]["temperature_2m"]
+
+    weather_code = data["current"]["weather_code"]
+
+
+    # -----------------------------------------
+    # CONVERT WEATHER CODE
+    # -----------------------------------------
 
     if weather_code in [0, 1, 2, 3]:
-        return "clear"
+
+        weather = "clear"
 
     elif weather_code in [45, 48]:
-        return "fog"
+
+        weather = "fog"
 
     elif weather_code in [
         51, 53, 55,
@@ -34,174 +80,53 @@ def weather_code_to_text(weather_code):
         66, 67,
         80, 81, 82
     ]:
-        return "rain"
+
+        weather = "rain"
 
     elif weather_code in [
         71, 73, 75,
-        77, 85, 86
+        77,
+        85, 86
     ]:
-        return "snow"
+
+        weather = "snow"
 
     elif weather_code in [
         95, 96, 99
     ]:
-        return "storm"
+
+        weather = "storm"
 
     else:
-        return "clear"
+
+        weather = "clear"
 
 
-# ============================================================
-# SINGLE LOCATION WEATHER
-# ============================================================
+    return {
 
-def get_weather(latitude, longitude):
+        "temperature":
+            temperature,
 
-    url = "https://api.open-meteo.com/v1/forecast"
+        "weather":
+            weather
 
-    parameters = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "current": "temperature_2m,weather_code",
-        "timezone": "auto"
     }
 
-    headers = {
-        "User-Agent": "SafeWay-Road-Safety-Project/1.0"
-    }
 
-    max_attempts = 3
-
-    for attempt in range(1, max_attempts + 1):
-
-        try:
-
-            print(
-                "Single-location weather attempt",
-                attempt,
-                "of",
-                max_attempts
-            )
-
-            response = requests.get(
-                url,
-                params=parameters,
-                headers=headers,
-                timeout=10
-            )
-
-            # ------------------------------------------------
-            # RATE LIMIT
-            # ------------------------------------------------
-
-            if response.status_code == 429:
-
-                print(
-                    "Open-Meteo returned 429."
-                )
-
-                if attempt < max_attempts:
-
-                    retry_after = response.headers.get(
-                        "Retry-After"
-                    )
-
-                    if retry_after:
-                        try:
-                            wait_time = int(retry_after)
-                        except ValueError:
-                            wait_time = attempt * 2
-                    else:
-                        wait_time = attempt * 2
-
-                    wait_time = min(wait_time, 10)
-
-                    print(
-                        "Waiting",
-                        wait_time,
-                        "seconds before retry..."
-                    )
-
-                    time.sleep(wait_time)
-
-                    continue
-
-                raise RuntimeError(
-                    "Live weather service is temporarily "
-                    "rate limited. Please try again later."
-                )
-
-            response.raise_for_status()
-
-            data = response.json()
-
-            if isinstance(data, list):
-                data = data[0]
-
-            if "current" not in data:
-
-                raise RuntimeError(
-                    "Weather service returned invalid data."
-                )
-
-            temperature = data["current"]["temperature_2m"]
-
-            weather_code = data["current"]["weather_code"]
-
-            weather = weather_code_to_text(
-                weather_code
-            )
-
-            return {
-                "temperature": temperature,
-                "weather": weather
-            }
-
-        except RuntimeError:
-            raise
-
-        except Exception as e:
-
-            print(
-                "Weather API error:",
-                repr(e)
-            )
-
-            if attempt < max_attempts:
-
-                wait_time = attempt * 2
-
-                print(
-                    "Retrying in",
-                    wait_time,
-                    "seconds..."
-                )
-
-                time.sleep(wait_time)
-
-            else:
-
-                raise RuntimeError(
-                    "Unable to obtain live weather data."
-                )
-
-
-# ============================================================
-# ROUTE WEATHER
-# ============================================================
+# =====================================================
+# GET WEATHER FOR ROUTE POINTS
+# =====================================================
 
 def get_route_weather(route_points):
 
+    weather_results = []
+
+    # -------------------------------------------------
+    # SAMPLE ONLY 5 POINTS FROM THE ROUTE
+    # -------------------------------------------------
+
     if not route_points:
-
-        raise RuntimeError(
-            "No route points available for weather checking."
-        )
-
-
-    # --------------------------------------------------------
-    # SELECT 5 REPRESENTATIVE POINTS
-    # --------------------------------------------------------
+        return weather_results
 
     number_of_points = len(route_points)
 
@@ -213,397 +138,115 @@ def get_route_weather(route_points):
         number_of_points - 1
     ]
 
-    sample_indexes = list(
-        dict.fromkeys(sample_indexes)
-    )
+    # Remove duplicates
+    sample_indexes = list(dict.fromkeys(sample_indexes))
 
-    selected_points = [
-        route_points[index]
-        for index in sample_indexes
-    ]
+    # -------------------------------------------------
+    # GET WEATHER FOR SELECTED POINTS
+    # -------------------------------------------------
 
+    for index in sample_indexes:
 
-    longitudes = [
-        point[0]
-        for point in selected_points
-    ]
+        point = route_points[index]
 
-    latitudes = [
-        point[1]
-        for point in selected_points
-    ]
+        # ORS coordinates:
+        # [longitude, latitude]
 
+        longitude = point[0]
+        latitude = point[1]
 
-    print(
-        "Checking live weather for",
-        len(selected_points),
-        "route points"
-    )
-
-
-    # --------------------------------------------------------
-    # CACHE KEY
-    # --------------------------------------------------------
-    #
-    # Round coordinates slightly so tiny coordinate
-    # differences don't create unnecessary cache entries.
-    #
-
-    cache_key = tuple(
-        (
-            round(latitudes[i], 3),
-            round(longitudes[i], 3)
+        print(
+            "Checking weather:",
+            latitude,
+            longitude
         )
-        for i in range(len(selected_points))
-    )
 
+        weather_data = get_weather(
+            latitude,
+            longitude
+        )
 
-    # --------------------------------------------------------
-    # CHECK CACHE
-    # --------------------------------------------------------
+        weather_results.append({
 
-    current_time = time.time()
+            "latitude":
+                latitude,
 
-    cached_weather = _weather_cache.get(cache_key)
+            "longitude":
+                longitude,
 
-    if cached_weather:
+            "temperature":
+                weather_data["temperature"],
 
-        cached_time, cached_data = cached_weather
+            "weather":
+                weather_data["weather"]
 
-        cache_age = current_time - cached_time
+        })
 
-        if cache_age < CACHE_DURATION:
-
-            print(
-                "Using cached weather data."
-            )
-
-            print(
-                "Cache age:",
-                round(cache_age, 1),
-                "seconds"
-            )
-
-            return cached_data
-
-        else:
-
-            print(
-                "Cached weather expired."
-            )
-
-            del _weather_cache[cache_key]
-
-
-    # --------------------------------------------------------
-    # OPEN-METEO REQUEST
-    # --------------------------------------------------------
-
-    url = "https://api.open-meteo.com/v1/forecast"
-
-    parameters = {
-        "latitude": ",".join(
-            map(str, latitudes)
-        ),
-
-        "longitude": ",".join(
-            map(str, longitudes)
-        ),
-
-        "current": "temperature_2m,weather_code",
-
-        "timezone": "auto"
-    }
-
-
-    headers = {
-        "User-Agent": "SafeWay-Road-Safety-Project/1.0"
-    }
-
-
-    # --------------------------------------------------------
-    # RETRY SETTINGS
-    # --------------------------------------------------------
-
-    max_attempts = 3
-
-
-    for attempt in range(1, max_attempts + 1):
-
-        try:
-
-            print(
-                "Weather API attempt",
-                attempt,
-                "of",
-                max_attempts
-            )
-
-
-            response = requests.get(
-                url,
-                params=parameters,
-                headers=headers,
-                timeout=10
-            )
-
-
-            # =================================================
-            # 429 RATE LIMIT
-            # =================================================
-
-            if response.status_code == 429:
-
-                print(
-                    "Open-Meteo returned 429."
-                )
-
-
-                if attempt < max_attempts:
-
-                    # Open-Meteo/server may tell us how long
-                    # to wait using Retry-After.
-                    retry_after = response.headers.get(
-                        "Retry-After"
-                    )
-
-
-                    if retry_after:
-
-                        try:
-
-                            wait_time = int(
-                                retry_after
-                            )
-
-                        except ValueError:
-
-                            wait_time = attempt * 2
-
-                    else:
-
-                        # Controlled exponential backoff:
-                        #
-                        # attempt 1 -> 2 seconds
-                        # attempt 2 -> 4 seconds
-                        #
-                        wait_time = attempt * 2
-
-
-                    # Don't wait an unreasonable amount
-                    # during an app request.
-                    wait_time = min(
-                        wait_time,
-                        10
-                    )
-
-
-                    print(
-                        "Waiting",
-                        wait_time,
-                        "seconds before retry..."
-                    )
-
-
-                    time.sleep(
-                        wait_time
-                    )
-
-
-                    continue
-
-
-                # All attempts failed.
-                raise RuntimeError(
-                    "Live weather service is temporarily "
-                    "rate limited. Please try again later."
-                )
-
-
-            # =================================================
-            # OTHER HTTP ERRORS
-            # =================================================
-
-            response.raise_for_status()
-
-
-            # =================================================
-            # READ RESPONSE
-            # =================================================
-
-            data = response.json()
-
-
-            if not isinstance(data, list):
-
-                data = [data]
-
-
-            # We requested one weather result for each
-            # selected route point.
-            if len(data) != len(selected_points):
-
-                raise RuntimeError(
-                    "Weather service returned incomplete "
-                    "route weather data."
-                )
-
-
-            # =================================================
-            # PROCESS WEATHER
-            # =================================================
-
-            weather_results = []
-
-
-            for i, weather_data in enumerate(data):
-
-                if "current" not in weather_data:
-
-                    raise RuntimeError(
-                        "Weather service returned invalid "
-                        "data for a route point."
-                    )
-
-
-                temperature = weather_data[
-                    "current"
-                ][
-                    "temperature_2m"
-                ]
-
-
-                weather_code = weather_data[
-                    "current"
-                ][
-                    "weather_code"
-                ]
-
-
-                weather = weather_code_to_text(
-                    weather_code
-                )
-
-
-                weather_results.append({
-
-                    "latitude": latitudes[i],
-
-                    "longitude": longitudes[i],
-
-                    "temperature": temperature,
-
-                    "weather": weather
-
-                })
-
-
-            # =================================================
-            # SAVE TO CACHE
-            # =================================================
-
-            _weather_cache[cache_key] = (
-                time.time(),
-                weather_results
-            )
-
-
-            print(
-                "Live weather received successfully."
-            )
-
-
-            print(
-                "Weather data cached for",
-                CACHE_DURATION,
-                "seconds."
-            )
-
-
-            return weather_results
-
-
-        except RuntimeError:
-            raise
-
-
-        except Exception as e:
-
-            print(
-                "Weather API error:",
-                repr(e)
-            )
-
-
-            if attempt < max_attempts:
-
-                wait_time = attempt * 2
-
-
-                print(
-                    "Retrying in",
-                    wait_time,
-                    "seconds..."
-                )
-
-
-                time.sleep(
-                    wait_time
-                )
-
-
-                continue
-
-
-            raise RuntimeError(
-                "Unable to obtain live weather data."
-            )
-
-
-# ============================================================
-# OVERALL ROUTE WEATHER
-# ============================================================
+    return weather_results
+# =====================================================
+# GET OVERALL ROUTE WEATHER
+# =====================================================
 
 def get_overall_route_weather(route_points):
 
     weather_results = get_route_weather(
+
         route_points
+
     )
 
 
     if not weather_results:
 
-        raise RuntimeError(
-            "Live weather data is unavailable."
-        )
+        return {
+
+            "overall_weather":
+                "clear",
+
+            "average_temperature":
+                0
+
+        }
 
 
-    # --------------------------------------------------------
-    # AVERAGE TEMPERATURE
-    # --------------------------------------------------------
+    # -----------------------------------------
+    # TEMPERATURE
+    # -----------------------------------------
 
     temperatures = [
+
         item["temperature"]
+
         for item in weather_results
+
     ]
 
 
     average_temperature = round(
-        sum(temperatures) /
+
+        sum(temperatures)
+        /
         len(temperatures),
+
         2
+
     )
 
 
-    # --------------------------------------------------------
-    # OVERALL WEATHER
-    # --------------------------------------------------------
+    # -----------------------------------------
+    # WEATHER
+    # -----------------------------------------
 
     weather_list = [
+
         item["weather"]
+
         for item in weather_results
+
     ]
 
+
+    # Give priority to dangerous weather
 
     if "storm" in weather_list:
 
@@ -626,22 +269,12 @@ def get_overall_route_weather(route_points):
         overall_weather = "clear"
 
 
-    print(
-        "Overall route weather:",
-        overall_weather
-    )
-
-
-    print(
-        "Average temperature:",
-        average_temperature
-    )
-
-
     return {
 
-        "overall_weather": overall_weather,
+        "overall_weather":
+            overall_weather,
 
-        "average_temperature": average_temperature
+        "average_temperature":
+            average_temperature
 
     }
