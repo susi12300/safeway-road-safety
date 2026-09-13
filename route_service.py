@@ -1,4 +1,6 @@
 
+from urllib import response
+
 import requests
 import openrouteservice
 import os
@@ -32,6 +34,11 @@ def get_coordinates(place):
         headers=headers,
         timeout=10
     )
+
+    if response.status_code != 200:
+        print("Nominatim error status:", response.status_code)
+        print("Nominatim response:", response.text[:500])
+        raise RuntimeError("Location search service is temporarily unavailable.")
 
     result = response.json()
 
